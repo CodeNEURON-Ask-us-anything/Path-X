@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PathX – Safety Navigator</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+body { margin:0; font-family:'Roboto',sans-serif; background:#0f111a; color:white; overflow-x:hidden; }
+header { background:#0a0c1d; color:#10b981; padding:15px; text-align:center; font-size:1.8rem; font-weight:bold; letter-spacing:1px; }
+body::before { content:''; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(90deg,rgba(16,185,129,0.05) 1px,transparent 1px),linear-gradient(rgba(16,185,129,0.05) 1px,transparent 1px); background-size:40px 40px; z-index:-1; animation:moveGrid 30s linear infinite; }
+@keyframes moveGrid { 0%{background-position:0 0}100%{background-position:400px 400px} }
+
+#loginScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center; z-index:1000; }
+#loginBox { background:#1b1f38; padding:30px; border-radius:12px; width:300px; text-align:center; box-shadow:0 4px 20px rgba(16,185,129,0.3); }
+#loginBox input { width:90%; padding:10px; margin:10px 0; border-radius:6px; border:1px solid #10b981; background:#0f111a; color:white; }
+#loginBox input::placeholder{ color:#8da3b9; }
+#loginBox button { padding:12px; width:95%; background:#10b981; color:black; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.3s; }
+#loginBox button:hover{ background:#0ef87f; }
+
+.container { display:flex; flex-direction:row; padding:20px; gap:20px; }
+#map { flex:3; height:600px; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.5); }
+.sidebar { flex:1; display:flex; flex-direction:column; gap:20px; }
+.card { background:#1b1f38; padding:15px 20px; border-radius:12px; box-shadow:0 2px 8px rgba(16,185,129,0.2); }
+.card h3 { margin-top:0; font-size:1.2rem; color:#10b981; }
+.score { font-size:2rem; font-weight:bold; text-align:center; margin:10px 0; transition:all 0.5s ease; color:#0ef87f; }
+.route-option { padding:10px; margin-bottom:10px; border-radius:8px; cursor:pointer; transition:all 0.2s ease; border:2px solid transparent; display:flex; justify-content:space-between; align-items:center; color:white; }
+.route-option:hover { border-color:#10b981; background:#0a0c1d; }
+.route-option.selected { border-color:#10b981; background:#16202c; }
+button { padding:12px; width:100%; background-color:#ef4444; color:white; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:all 0.2s ease; }
+button:hover { background-color:#dc2626; }
+.heatmap-toggle { background-color:#10b981; margin-bottom:10px; }
+.heatmap-toggle:hover { background-color:#0ef87f; }
+#settingsTab { display:none; }
+.note-box { width:100%; height:60px; padding:8px; margin-bottom:10px; border-radius:6px; border:1px solid #10b981; background:#0f111a; color:white; resize:none; }
+.save-note { background:#10b981; color:black; margin-bottom:5px; }
+.route-info { font-size:0.9rem; color:#8da3b9; }
+.input-group { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+.dropdown-item { padding:8px 12px; cursor:pointer; border-radius:5px; margin-bottom:5px; background:#0a0c1d; color:white; transition:0.2s; }
+.dropdown-item:hover{ background:#16202c; }
+@media(max-width:900px){ .container { flex-direction:column; } #map{height:500px;} }
+</style>
+</head>
+<body>
+<header>PathX – Safety Navigator</header>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+  <div id="loginBox">
+    <h3>Welcome to PathX</h3>
+    <input type="text" id="userName" placeholder="Enter Your Name"/>
+    <input type="email" id="userEmail" placeholder="Enter Your Email"/>
+    <button id="loginBtn">Login</button>
+    <p id="loginError" style="color:#ef4444"></p>
+  </div>
+</div>
+
+<div class="container">
+  <div id="map"></div>
+  <div class="sidebar">
+    <div class="card">
+      <h3>Enter Route</h3>
+      <div class="input-group">
+        <input id="fromInput" type="text" placeholder="From"/>
+        <input id="toInput" type="text" placeholder="To"/>
+        <button id="findRouteBtn">Find Route</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Route Options</h3>
+      <div id="routes"></div>
+    </div>
+
+    <div class="card">
+      <h3>Selected Route Safety Score</h3>
+      <div class="score" id="safetyScore">0.00</div>
+    </div>
+
+    <div class="card">
+      <h3>Heatmap</h3>
+      <button class="heatmap-toggle" id="toggleHeatmap">Show Hotspots</button>
+    </div>
+
+    <div class="card">
+      <h3>Emergency SOS</h3>
+      <button id="sosBtn">Send SOS</button>
+      <p id="sosStatus"></p>
+    </div>
+
+    <div class="card">
+      <h3>Settings</h3>
+      <button onclick="toggleSettings()">Settings</button>
+      <div id="settingsTab">
+        <div class="dropdown-item" onclick="logout()">Logout</div>
+        <div class="dropdown-item" onclick="retrieveMapData()">Retrieve Map Data</div>
+        <div class="dropdown-item" onclick="showAddNote()">Add Your Review / Note</div>
+        <div class="dropdown-item" onclick="showRecentPlaces()">Recent Places</div>
+        <div class="dropdown-item" onclick="showEmergencyCenters()">Emergency Centers</div>
+        <div id="settingsContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+<script>
+let currentUser=null;
+
+// Email validation function
+function validateEmail(email){
+  const re = /^[a-zA-Z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$/;
+  return re.test(email);
+}
+
+// Map variables
+let map, heat, routesPolylines=[], routesDiv;
+
+// Persistent login
+function initializeApp(){
+  document.getElementById('loginScreen').style.display='none';
+  alert(`Welcome, ${currentUser.name}!`);
+
+  // Initialize map
+  map = L.map('map').setView([12.9716,77.5946],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+
+  // Heatmap
+  const heatData=[[12.972,77.595,0.8],[12.973,77.597,0.6],[12.969,77.592,0.9]];
+  heat=L.heatLayer(heatData,{radius:25,blur:15,maxZoom:17});
+  let heatVisible=false;
+  document.getElementById('toggleHeatmap').addEventListener('click',()=>{
+    heatVisible=!heatVisible;
+    heatVisible?heat.addTo(map):map.removeLayer(heat);
+  });
+
+  routesDiv=document.getElementById('routes');
+
+  // Nearby emergency markers
+  const nearbyPlaces = [
+    {name:'Police Station 1',type:'Police',coords:[12.9730,77.596]},
+    {name:'Police Station 2',type:'Police',coords:[12.970,77.591]},
+    {name:'Petrol Station',type:'Fuel',coords:[12.974,77.598]},
+    {name:'Emergency Center',type:'Hospital',coords:[12.968,77.593]}
+  ];
+  nearbyPlaces.forEach(p=>{
+    const icon = L.icon({iconUrl:p.type==='Police'?'https://cdn-icons-png.flaticon.com/512/1828/1828843.png':
+                          p.type==='Fuel'?'https://cdn-icons-png.flaticon.com/512/616/616408.png':
+                          'https://cdn-icons-png.flaticon.com/512/2965/2965567.png',
+                          iconSize:[30,30],iconAnchor:[15,30]});
+    L.marker(p.coords,{icon}).addTo(map).bindPopup(`${p.type}: ${p.name}`);
+  });
+
+  // Routes button
+  document.getElementById('findRouteBtn').addEventListener('click',()=>{
+    const from=document.getElementById('fromInput').value.trim();
+    const to=document.getElementById('toInput').value.trim();
+    if(!from||!to){ alert('Enter both From and To'); return; }
+    generateRoutes(from,to);
+  });
+
+  // SOS button
+  document.getElementById('sosBtn').addEventListener('click',()=>{
+    const sosStatus=document.getElementById('sosStatus');
+    sosStatus.innerHTML='Sending SOS...';
+    setTimeout(()=>{ sosStatus.innerHTML='✅ SOS Sent! Emergency contact notified.' },1500);
+  });
+}
+
+// Login button
+document.getElementById('loginBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('userName').value.trim();
+  const email = document.getElementById('userEmail').value.trim();
+  const error = document.getElementById('loginError');
+  if(!name || !email){ error.innerText='Please fill in both fields.'; return; }
+  if(!validateEmail(email)){ error.innerText='Invalid email address!'; return; }
+  currentUser={name,email};
+  localStorage.setItem('pathxUser',JSON.stringify(currentUser));
+  initializeApp();
+});
+
+// Auto-login if data exists
+if(localStorage.getItem('pathxUser')){
+  currentUser=JSON.parse(localStorage.getItem('pathxUser'));
+  initializeApp();
+}
+
+// ---------------- Mock route generation ----------------
+function generateRoutes(from,to){
+  routesDiv.innerHTML='';
+  const mockRoutes = [
+    {name:'Safest Route',score:0.85,distance:4.2,time:16,coords:[[12.9716,77.5946],[12.9726,77.5996]]},
+    {name:'Shortest Route',score:0.45,distance:3.0,time:12,coords:[[12.9716,77.5946],[12.9706,77.5906]]}
+  ];
+  mockRoutes.forEach((r,idx)=>{
+    const div=document.createElement('div');
+    div.className='route-option'+(idx===0?' selected':'');
+    div.dataset.score=r.score;
+    div.dataset.distance=r.distance;
+    div.dataset.time=r.time;
+    div.dataset.coords=JSON.stringify(r.coords);
+    div.innerHTML=`${r.name} <span class="route-info">${r.time} min | ${r.distance} km</span>`;
+    routesDiv.appendChild(div);
+
+    div.addEventListener('click', ()=>{
+      document.querySelectorAll('.route-option').forEach(e=>e.classList.remove('selected'));
+      div.classList.add('selected');
+      document.getElementById('safetyScore').innerText=r.score;
+      drawRoutes();
+    });
+  });
+  document.getElementById('safetyScore').innerText=mockRoutes[0].score;
+  drawRoutes();
+}
+
+// Draw routes
+function drawRoutes(){
+  routesPolylines.forEach(r=>map.removeLayer(r));
+  routesPolylines=[];
+  document.querySelectorAll('.route-option').forEach(el=>{
+    const coords=JSON.parse(el.dataset.coords);
+    const color = el.classList.contains('selected')?'#10b981':'#ef4444';
+    const poly = L.polyline(coords,{color:color,weight:6}).addTo(map);
+    poly.bindPopup(`${el.textContent}<br>Distance: ${el.dataset.distance} km<br>Time: ${el.dataset.time} min<br>Safety: ${el.dataset.score}`);
+    routesPolylines.push(poly);
+  });
+}
+
+// ---------------- Settings placeholder functions ----------------
+function retrieveMapData(){ alert('Map data retrieved! (placeholder)'); }
+function showAddNote(){ document.getElementById('settingsContent').innerHTML='<textarea id="userNote" class="note-box" placeholder="Add your review/note"></textarea><button class="save-note" onclick="saveNote()">Save Note</button><div id="savedNotes"></div>'; }
+function showRecentPlaces(){ document.getElementById('settingsContent').innerHTML='<p>Recent Places (placeholder)</p>'; }
+function showEmergencyCenters(){ document.getElementById('settingsContent').innerHTML='<p>Emergency Centers (Hospitals, Hotels, Petrol stations)</p>'; }
+function saveNote(){ 
+  if(!currentUser){alert('Please login to save notes'); return;}
+  const note=document.getElementById('userNote').value;
+  if(note.trim()==='') return;
+  const notesDiv=document.getElementById('savedNotes');
+  const p=document.createElement('p');
+  p.textContent=`[${currentUser.name}] ${note}`;
+  p.style.background='#0a0c1d';
+  p.style.padding='5px';
+  p.style.borderRadius='5px';
+  p.style.marginBottom='5px';
+  notesDiv.prepend(p);
+  document.getElementById('userNote').value='';
+}
+
+// Toggle settings
+function toggleSettings(){ 
+  const tab=document.getElementById('settingsTab');
+  tab.style.display=tab.style.display==='none'?'block':'none';
+}
+
+// Logout
+function logout(){ localStorage.removeItem('pathxUser'); location.reload(); }
+</script>
+</body>
+</html>
