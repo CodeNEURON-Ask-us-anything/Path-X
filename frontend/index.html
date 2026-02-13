@@ -4,10 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PathX – Safety Navigator</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
 <style>
 body {
   margin:0;
@@ -16,8 +14,6 @@ body {
   color:white;
   overflow:hidden;
 }
-
-/* Map */
 #map {
   position:absolute;
   top:0;
@@ -26,8 +22,6 @@ body {
   height:100%;
   z-index:1;
 }
-
-/* Title */
 .header {
   position:absolute;
   top:15px;
@@ -37,8 +31,6 @@ body {
   color:#10f0a0;
   z-index:3;
 }
-
-/* Center search */
 .search-box {
   position:absolute;
   top:70px;
@@ -51,7 +43,6 @@ body {
   width:420px;
   box-shadow:0 0 20px rgba(0,255,150,0.2);
 }
-
 .search-box input {
   width:95%;
   padding:10px;
@@ -59,7 +50,6 @@ body {
   border:none;
   border-radius:6px;
 }
-
 .search-box button {
   width:100%;
   padding:12px;
@@ -70,18 +60,15 @@ body {
   border-radius:8px;
   cursor:pointer;
 }
-
-/* Left panel */
 .left-panel {
   position:absolute;
-  top:100px;
+  top:180px;
   left:20px;
   z-index:3;
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-
 .action-btn {
   background:#1a1a1a;
   border:1px solid #ff5e62;
@@ -91,8 +78,6 @@ body {
   width:140px;
   text-align:center;
 }
-
-/* Right panel */
 .right-panel {
   position:absolute;
   top:90px;
@@ -104,21 +89,10 @@ body {
   z-index:3;
   box-shadow:0 0 20px rgba(0,255,150,0.2);
 }
-
 .right-panel h3 {
   margin-top:0;
   color:#10f0a0;
 }
-
-.legend {
-  margin:10px 0;
-}
-
-.legend div {
-  margin:6px 0;
-}
-
-/* Safety card */
 .safety-card {
   position:absolute;
   bottom:30px;
@@ -129,29 +103,36 @@ body {
   width:240px;
   z-index:3;
 }
-
 .score {
   font-size:28px;
   color:#ff5e62;
   font-weight:bold;
 }
+.status-msg {
+  position:absolute;
+  top:150px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(16,240,160,0.9);
+  padding:12px 24px;
+  border-radius:8px;
+  z-index:3;
+  display:none;
+}
 </style>
 </head>
-
 <body>
 
 <div id="map"></div>
-
 <div class="header">PathX – Safety Navigator</div>
+<div class="status-msg" id="statusMsg"></div>
 
-<!-- Center Search -->
 <div class="search-box">
-  <input id="fromInput" placeholder="Enter starting point">
-  <input id="toInput" placeholder="Enter destination">
+  <input id="fromInput" placeholder="From (e.g., VIT Vellore)">
+  <input id="toInput" placeholder="To (e.g., Vellore Fort)">
   <button onclick="generateRoutes()">Find Safest Routes</button>
 </div>
 
-<!-- Left Panel -->
 <div class="left-panel">
   <div class="action-btn" onclick="sendSOS()">🚨 Emergency</div>
   <div class="action-btn" onclick="reportIncident()">⚠ Report</div>
@@ -159,80 +140,183 @@ body {
   <div class="action-btn" onclick="addNote()">⭐ Review</div>
 </div>
 
-<!-- Right Panel -->
 <div class="right-panel">
   <h3>Safety Map</h3>
-
-  <div class="legend">🟢 Ultra Safe Route</div>
-  <div class="legend">🟡 Moderate Route</div>
-  <div class="legend">🔴 Risk Route</div>
-
-  <hr>
-
-  <div class="legend">🔵 Police Station</div>
-  <div class="legend">🟢 Hospital</div>
-  <div class="legend">🟡 Commercial Area</div>
+  🟢 Safe Route <br>
+  🔴 Fast Route <br><br>
+  <div id="routeInfo">Enter locations to see routes</div>
 </div>
 
-<!-- Safety Score -->
 <div class="safety-card">
-  <div class="score" id="safetyScore">0</div>
+  <div class="score" id="safetyScore">--</div>
   <div>Safety Score</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-let map, routes=[];
+let map, routes = [];
+const BACKEND_URL = 'http://127.0.0.1:8000';
 
-map = L.map('map').setView([12.9716,77.5946],13);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19
+map = L.map('map').setView([12.9165, 79.1325], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
 }).addTo(map);
 
-/* Dummy routes */
-function generateRoutes(){
-  routes.forEach(r=>map.removeLayer(r));
-  routes=[];
-
-  const safe = L.polyline([
-    [12.9716,77.5946],
-    [12.975,77.6]
-  ],{color:'green',weight:6}).addTo(map);
-
-  const mid = L.polyline([
-    [12.9716,77.5946],
-    [12.968,77.6]
-  ],{color:'orange',weight:6}).addTo(map);
-
-  const risk = L.polyline([
-    [12.9716,77.5946],
-    [12.969,77.59]
-  ],{color:'red',weight:6}).addTo(map);
-
-  routes=[safe,mid,risk];
-
-  document.getElementById("safetyScore").innerText = "78/100";
+function showStatus(msg, isError = false) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.style.background = isError ? 'rgba(255,94,98,0.9)' : 'rgba(16,240,160,0.9)';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
 }
 
-/* Actions */
-function sendSOS(){
-  alert("SOS sent to emergency contact!");
+async function geocode(place) {
+  let query = place.toLowerCase().includes('vellore') ? place : `${place}, Vellore, India`;
+  let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+  
+  let res = await fetch(url, {
+    headers: { 'User-Agent': 'PathX-Safety-Navigator' }
+  });
+  
+  if (!res.ok) throw new Error("Geocoding failed");
+  
+  let data = await res.json();
+  if (data.length === 0) throw new Error(`Location not found: ${place}`);
+  
+  return {
+    lat: parseFloat(data[0].lat),
+    lon: parseFloat(data[0].lon)
+  };
 }
 
-function reportIncident(){
-  alert("Incident reported!");
+async function generateRoutes() {
+  routes.forEach(r => map.removeLayer(r));
+  routes = [];
+  
+  let from = document.getElementById("fromInput").value.trim();
+  let to = document.getElementById("toInput").value.trim();
+  
+  if (!from || !to) {
+    showStatus("Please enter both locations!", true);
+    return;
+  }
+  
+  document.getElementById("safetyScore").innerText = "...";
+  document.getElementById("routeInfo").innerText = "Loading routes...";
+  
+  try {
+    console.log("Step 1: Geocoding locations...");
+ 
+    let start = await geocode(from);
+    let end = await geocode(to);
+    
+    console.log("Start:", start);
+    console.log("End:", end);
+    
+    console.log("Step 2: Fetching routes from backend...");
+
+    let fastUrl = `${BACKEND_URL}/route?lat1=${start.lat}&lon1=${start.lon}&lat2=${end.lat}&lon2=${end.lon}&mode=fast`;
+    let safeUrl = `${BACKEND_URL}/route?lat1=${start.lat}&lon1=${start.lon}&lat2=${end.lat}&lon2=${end.lon}&mode=safe`;
+    
+    let [fastRes, safeRes] = await Promise.all([
+      fetch(fastUrl),
+      fetch(safeUrl)
+    ]);
+    
+    if (!fastRes.ok) {
+      throw new Error(`Fast route error: ${fastRes.status} ${fastRes.statusText}`);
+    }
+    if (!safeRes.ok) {
+      throw new Error(`Safe route error: ${safeRes.status} ${safeRes.statusText}`);
+    }
+    
+    let fastData = await fastRes.json();
+    let safeData = await safeRes.json();
+    
+    console.log("Fast route data:", fastData);
+    console.log("Safe route data:", safeData);
+    
+    if (!fastData.route || fastData.route.length === 0) {
+      throw new Error("No fast route found");
+    }
+    if (!safeData.route || safeData.route.length === 0) {
+      throw new Error("No safe route found");
+    }
+    
+    console.log("Step 3: Drawing routes on map...");
+
+    let fastCoords = fastData.route.map(p => [p[0], p[1]]);
+    let safeCoords = safeData.route.map(p => [p[0], p[1]]);
+
+    let fastRoute = L.polyline(fastCoords, {
+      color: "red",
+      weight: 6,
+      opacity: 0.7
+    }).addTo(map).bindPopup("Fast Route");
+    
+    let safeRoute = L.polyline(safeCoords, {
+      color: "green",
+      weight: 7,
+      opacity: 0.8
+    }).addTo(map).bindPopup("Safe Route");
+
+    L.marker([start.lat, start.lon]).addTo(map)
+      .bindPopup(`<b>Start:</b> ${from}`);
+    L.marker([end.lat, end.lon]).addTo(map)
+      .bindPopup(`<b>End:</b> ${to}`);
+    
+    routes = [fastRoute, safeRoute];
+
+    map.fitBounds(safeRoute.getBounds(), { padding: [50, 50] });
+
+    document.getElementById("safetyScore").innerText = "95";
+    document.getElementById("routeInfo").innerHTML = 
+      `🟢 Safe route: ${safeCoords.length} points<br>🔴 Fast route: ${fastCoords.length} points`;
+    
+    showStatus("Routes loaded successfully! 🎉");
+    
+  } catch (err) {
+    console.error("Error:", err);
+    document.getElementById("safetyScore").innerText = "--";
+    document.getElementById("routeInfo").innerText = "Error loading routes";
+    
+    let msg = err.message;
+    if (msg.includes("Failed to fetch")) {
+      msg = "❌ Cannot connect to backend! Make sure server is running on port 8000";
+    }
+    
+    showStatus(msg, true);
+  }
 }
 
-function shareLocation(){
-  alert("Location shared!");
+function sendSOS() { showStatus("🚨 SOS sent to emergency contacts!"); }
+function reportIncident() { showStatus("⚠ Incident report submitted!"); }
+function shareLocation() { showStatus("📍 Location shared successfully!"); }
+function addNote() {
+  let note = prompt("Enter your safety review:");
+  if (note) showStatus("⭐ Review saved!");
 }
 
-function addNote(){
-  const note = prompt("Enter review:");
-  if(note) alert("Note saved!");
-}
+document.getElementById("fromInput").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") generateRoutes();
+});
+document.getElementById("toInput").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") generateRoutes();
+});
+
+console.log("✅ PathX Safety Navigator initialized!");
+console.log("Backend URL:", BACKEND_URL);
+
+fetch(BACKEND_URL + "/")
+  .then(res => res.json())
+  .then(data => {
+    console.log("✅ Backend connected:", data);
+    showStatus("Backend connected successfully!");
+  })
+  .catch(err => {
+    console.error("❌ Backend not reachable:", err);
+    showStatus("⚠ Backend not running! Start server first.", true);
+  });
 </script>
 
 </body>
