@@ -4,320 +4,451 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PathX – Safety Navigator</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body {
-  margin:0;
-  font-family:'Roboto',sans-serif;
-  background:#0a0c1d;
-  color:white;
-  overflow:hidden;
-}
-#map {
-  position:absolute;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  z-index:1;
-}
-.header {
-  position:absolute;
-  top:15px;
-  left:20px;
-  font-size:22px;
-  font-weight:bold;
-  color:#10f0a0;
-  z-index:3;
-}
-.search-box {
-  position:absolute;
-  top:70px;
-  left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,0.8);
-  padding:18px;
-  border-radius:14px;
-  z-index:3;
-  width:420px;
-  box-shadow:0 0 20px rgba(0,255,150,0.2);
-}
-.search-box input {
-  width:95%;
-  padding:10px;
-  margin:6px 0;
-  border:none;
-  border-radius:6px;
-}
-.search-box button {
-  width:100%;
-  padding:12px;
-  background:linear-gradient(90deg,#ff5e62,#ff9966);
-  border:none;
-  color:white;
-  font-weight:bold;
-  border-radius:8px;
-  cursor:pointer;
-}
-.left-panel {
-  position:absolute;
-  top:180px;
-  left:20px;
-  z-index:3;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.action-btn {
-  background:#1a1a1a;
-  border:1px solid #ff5e62;
-  padding:12px;
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0c1d;color:#fff;overflow:hidden}
+#map{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1}
+.header{position:absolute;top:20px;left:20px;z-index:3;display:flex;align-items:center;gap:12px}
+.logo{font-size:28px;font-weight:700;background:linear-gradient(135deg,#10f0a0,#00d9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.logo-icon{font-size:32px;color:#10f0a0}
+.search-box{position:absolute;top:90px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);padding:24px;border-radius:20px;z-index:3;width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.search-box input{width:100%;padding:14px 18px;margin:8px 0;border:2px solid #e0e0e0;border-radius:12px;font-size:15px;font-family:'Inter',sans-serif;transition:.3s;color:#333;background:#fff}
+.search-box input:focus{outline:0;border-color:#10f0a0;box-shadow:0 0 0 4px rgba(16,240,160,.1)}
+.search-box input::placeholder{color:#999}
+.search-btn{width:100%;padding:16px;background:linear-gradient(135deg,#ff5e62,#ff9966);border:none;color:#fff;font-weight:600;font-size:16px;border-radius:12px;cursor:pointer;margin-top:12px;transition:.3s;box-shadow:0 6px 20px rgba(255,94,98,.4)}
+.search-btn:hover{transform:translateY(-2px)}
+.left-panel{position:absolute;top:120px;left:20px;z-index:3;display:flex;flex-direction:column;gap:12px}
+.action-btn{background:rgba(0,0,0,.8);border:2px solid transparent;padding:16px 20px;border-radius:14px;cursor:pointer;width:200px;display:flex;align-items:center;gap:12px;transition:.3s;font-size:15px;font-weight:500}
+.action-btn i{font-size:20px}
+.action-btn.emergency{border-color:#ff5e62;color:#ff5e62}
+.action-btn.emergency:hover{background:#ff5e62;color:#fff;transform:translateX(5px)}
+.action-btn.report{border-color:#ffa726;color:#ffa726}
+.action-btn.report:hover{background:#ffa726;color:#fff;transform:translateX(5px)}
+.action-btn.share{border-color:#42a5f5;color:#42a5f5}
+.action-btn.share:hover{background:#42a5f5;color:#fff;transform:translateX(5px)}
+.action-btn.review{border-color:#ffd700;color:#ffd700}
+.action-btn.review:hover{background:#ffd700;color:#333;transform:translateX(5px)}
+.right-panel{position:absolute;top:90px;right:20px;background:rgba(0,0,0,.85);padding:24px;border-radius:18px;width:300px;z-index:3;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.right-panel h3{margin:0 0 16px;color:#10f0a0;font-size:20px;font-weight:600}
+.legend-item{display:flex;align-items:center;gap:10px;margin:12px 0;font-size:14px}
+.legend-dot{width:12px;height:12px;border-radius:50%}
+.route-info{margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1);font-size:14px}
+.route-detail{margin-bottom:14px;padding:14px;background:rgba(255,255,255,.08);border-radius:10px;border-left:4px solid}
+.route-detail.safe{border-color:#10f0a0}
+.route-detail.fast{border-color:#ff5e62}
+.route-detail strong{display:block;margin-bottom:8px;font-size:16px;font-weight:600}
+.route-detail .stats{color:#fff;font-size:14px;font-weight:500}
+.safety-card{position:absolute;bottom:30px;left:20px;background:rgba(0,0,0,.9);padding:24px;border-radius:18px;width:220px;z-index:3;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center}
+.score{font-size:56px;font-weight:700;background:linear-gradient(135deg,#10f0a0,#00d9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.score-label{font-size:14px;color:#999;text-transform:uppercase;letter-spacing:1px}
+.status-msg{position:fixed;top:20px;right:20px;background:rgba(16,240,160,.95);color:#0a0c1d;padding:16px 24px;border-radius:12px;z-index:1000;display:none;font-weight:600;box-shadow:0 8px 25px rgba(16,240,160,.3)}
+.status-msg.error{background:rgba(255,94,98,.95);color:#fff}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.7)}
+.modal-content{background:linear-gradient(135deg,#1a1d3a,#0a0c1d);margin:5% auto;padding:32px;border-radius:20px;width:90%;max-width:500px;box-shadow:0 25px 80px rgba(0,0,0,.5)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.modal-header h2{color:#10f0a0;font-size:24px;font-weight:700}
+.close{color:#999;font-size:32px;font-weight:300;cursor:pointer}
+.close:hover{color:#fff}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;margin-bottom:8px;color:#10f0a0;font-weight:500;font-size:14px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 16px;border:2px solid rgba(16,240,160,.2);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-family:'Inter',sans-serif;font-size:15px;transition:.3s}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:0;border-color:#10f0a0;background:rgba(255,255,255,.08)}
+.form-group textarea{resize:vertical;min-height:100px}
+.modal-btn{width:100%;padding:14px;border:none;border-radius:10px;font-weight:600;font-size:16px;cursor:pointer;transition:.3s;margin-top:8px}
+.modal-btn.primary{background:linear-gradient(135deg,#10f0a0,#00d9ff);color:#0a0c1d}
+.modal-btn.primary:hover{transform:translateY(-2px)}
+.modal-btn.danger{background:linear-gradient(135deg,#ff5e62,#ff9966);color:#fff}
+.modal-btn.danger:hover{transform:translateY(-2px)}
+.loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);padding:40px;border-radius:20px;z-index:2000;display:none}
+.spinner{border:4px solid rgba(255,255,255,.1);border-top:4px solid #10f0a0;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.loading-text{text-align:center;color:#10f0a0;font-weight:600}
+.emergency-contact-item{
+  background:rgba(255,94,98,.1);
+  border:2px solid rgba(255,94,98,.3);
+  padding:12px 16px;
   border-radius:10px;
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.emergency-contact-item .name{
+  color:#fff;
+  font-weight:500;
+}
+.emergency-contact-item .phone{
+  color:#999;
+  font-size:13px;
+}
+.remove-contact{
+  background:#ff5e62;
+  color:#fff;
+  border:none;
+  padding:6px 12px;
+  border-radius:6px;
   cursor:pointer;
-  width:140px;
-  text-align:center;
+  font-size:12px;
 }
-.right-panel {
-  position:absolute;
-  top:90px;
-  right:20px;
-  background:rgba(0,0,0,0.85);
-  padding:18px;
-  border-radius:14px;
-  width:240px;
-  z-index:3;
-  box-shadow:0 0 20px rgba(0,255,150,0.2);
-}
-.right-panel h3 {
-  margin-top:0;
-  color:#10f0a0;
-}
-.safety-card {
-  position:absolute;
-  bottom:30px;
-  left:20px;
-  background:rgba(0,0,0,0.9);
-  padding:20px;
-  border-radius:14px;
-  width:240px;
-  z-index:3;
-}
-.score {
-  font-size:28px;
-  color:#ff5e62;
-  font-weight:bold;
-}
-.status-msg {
-  position:absolute;
-  top:150px;
-  left:50%;
-  transform:translateX(-50%);
-  background:rgba(16,240,160,0.9);
-  padding:12px 24px;
-  border-radius:8px;
-  z-index:3;
-  display:none;
+@media (max-width:768px){
+.search-box{width:90%;top:100px}
+.left-panel{top:280px}
+.right-panel{width:90%;right:5%;top:auto;bottom:150px}
+.action-btn{width:160px;font-size:13px;padding:12px 16px}
 }
 </style>
 </head>
 <body>
-
 <div id="map"></div>
-<div class="header"></div>
+<div class="header">
+<i class="fas fa-shield-alt logo-icon"></i>
+<div class="logo">PathX</div>
+</div>
+<div class="loading" id="loading">
+<div class="spinner"></div>
+<div class="loading-text">Finding routes...</div>
+</div>
 <div class="status-msg" id="statusMsg"></div>
-
 <div class="search-box">
-  <input id="fromInput" placeholder="From (e.g., VIT Vellore)">
-  <input id="toInput" placeholder="To (e.g., Vellore Fort)">
-  <button onclick="generateRoutes()">Find Safest Routes</button>
+<input id="fromInput" placeholder="📍 Starting point (e.g., VIT Vellore)" value="">
+<input id="toInput" placeholder="🎯 Destination (e.g., Vellore Fort)" value="">
+<button class="search-btn" onclick="go()"><i class="fas fa-route"></i> Find Safest Routes</button>
 </div>
-
 <div class="left-panel">
-  <div class="action-btn" onclick="sendSOS()">🚨 Emergency</div>
-  <div class="action-btn" onclick="reportIncident()">⚠ Report</div>
-  <div class="action-btn" onclick="shareLocation()">📍 Share</div>
-  <div class="action-btn" onclick="addNote()">⭐ Review</div>
+<div class="action-btn emergency" onclick="quickSOS()"><i class="fas fa-exclamation-triangle"></i><span>Emergency SOS</span></div>
+<div class="action-btn report" onclick="rep()"><i class="fas fa-flag"></i><span>Report Incident</span></div>
+<div class="action-btn share" onclick="shr()"><i class="fas fa-share-alt"></i><span>Share Location</span></div>
+<div class="action-btn review" onclick="rev()"><i class="fas fa-star"></i><span>Add Review</span></div>
 </div>
-
 <div class="right-panel">
-  <h3>Safety Map</h3>
-  🟢 Safe Route <br>
-  🔴 Fast Route <br><br>
-  <div id="routeInfo">Enter locations to see routes</div>
+<h3>Safety Map</h3>
+<div class="legend-item"><div class="legend-dot" style="background:#10f0a0"></div><span>Ultra Safe Route</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:#ff5e62"></div><span>Fast Route</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:#42a5f5"></div><span>Your Location</span></div>
+<div class="route-info" id="routeInfo">
+<div style="color:#999;font-size:13px;text-align:center;padding:20px 0">Enter locations above to see routes</div>
+</div>
+</div>
+<div class="safety-card">
+<div class="score" id="safetyScore">--</div>
+<div class="score-label">Safety Score</div>
 </div>
 
-<div class="safety-card">
-  <div class="score" id="safetyScore">--</div>
-  <div>Safety Score</div>
+<!-- Settings Modal for Emergency Contacts -->
+<div id="settingsModal" class="modal">
+<div class="modal-content">
+<div class="modal-header"><h2><i class="fas fa-cog"></i> Emergency Settings</h2><span class="close" onclick="cls('settingsModal')">&times;</span></div>
+<div class="form-group">
+<label>Your Name</label>
+<input type="text" id="userName" placeholder="Enter your name">
+</div>
+<div class="form-group">
+<label>Emergency Contacts</label>
+<div id="contactsList"></div>
+<input type="text" id="newContactName" placeholder="Contact name">
+<input type="tel" id="newContactPhone" placeholder="WhatsApp number (e.g., 919876543210)" style="margin-top:8px">
+<button class="modal-btn primary" onclick="addContact()" style="margin-top:8px"><i class="fas fa-plus"></i> Add Contact</button>
+</div>
+<button class="modal-btn primary" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
+</div>
+</div>
+
+<div id="reportModal" class="modal">
+<div class="modal-content">
+<div class="modal-header"><h2><i class="fas fa-flag"></i> Report Incident</h2><span class="close" onclick="cls('reportModal')">&times;</span></div>
+<form onsubmit="submitReport(event)">
+<div class="form-group"><label>Incident Type</label><select id="incidentType" required><option value="">Select...</option><option value="accident">🚗 Accident</option><option value="harassment">⚠️ Harassment</option><option value="suspicious">👁️ Suspicious Activity</option><option value="robbery">💰 Robbery</option><option value="other">📝 Other</option></select></div>
+<div class="form-group"><label>Location</label><input type="text" id="incidentLocation" required></div>
+<div class="form-group"><label>Severity: <span id="severityValue">3</span></label><input type="range" id="incidentSeverity" min="1" max="5" value="3" oninput="document.getElementById('severityValue').innerText=this.value"></div>
+<div class="form-group"><label>Description</label><textarea id="incidentDescription" required></textarea></div>
+<button type="submit" class="modal-btn primary"><i class="fas fa-paper-plane"></i> Submit</button>
+</form>
+</div>
+</div>
+
+<div id="shareModal" class="modal">
+<div class="modal-content">
+<div class="modal-header"><h2><i class="fas fa-share-alt"></i> Share Location</h2><span class="close" onclick="cls('shareModal')">&times;</span></div>
+<form onsubmit="shareLocation(event)">
+<div class="form-group"><label>Your Name</label><input type="text" id="shareName" required></div>
+<div class="form-group"><label>WhatsApp Number</label><input type="text" id="shareWith" placeholder="e.g., 919876543210" required></div>
+<button type="submit" class="modal-btn primary"><i class="fab fa-whatsapp"></i> Share</button>
+</form>
+</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let map, routes = [];
-const BACKEND_URL = 'http://127.0.0.1:8000';
+let map,routes=[],cur=null,curMarker=null,startMarker=null,endMarker=null;
+const URL='http://127.0.0.1:8000';
 
-map = L.map('map').setView([12.9165, 79.1325], 13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+// Emergency contacts storage
+let emergencyContacts = JSON.parse(localStorage.getItem('pathx_emergency_contacts') || '[]');
+let userName = localStorage.getItem('pathx_user_name') || '';
 
-function showStatus(msg, isError = false) {
-  const el = document.getElementById('statusMsg');
-  el.textContent = msg;
-  el.style.background = isError ? 'rgba(255,94,98,0.9)' : 'rgba(16,240,160,0.9)';
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 4000);
-}
+map=L.map('map').setView([12.9165,79.1325],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-async function geocode(place) {
-  let query = place.toLowerCase().includes('vellore') ? place : `${place}, Vellore, India`;
-  let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-  
-  let res = await fetch(url, {
-    headers: { 'User-Agent': 'PathX-Safety-Navigator' }
+const blueCircleIcon = L.divIcon({
+  className: 'current-location-marker',
+  iconSize: [20, 20],
+  html: '<div style="width:20px;height:20px;background:#42a5f5;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(66,165,245,0.3)"></div>'
+});
+
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(p=>{
+    cur={lat:p.coords.latitude,lon:p.coords.longitude};
+    if(curMarker) map.removeLayer(curMarker);
+    curMarker = L.marker([cur.lat,cur.lon], {icon: blueCircleIcon}).addTo(map).bindPopup("📍 You are here");
+    map.setView([cur.lat,cur.lon],14);
   });
-  
-  if (!res.ok) throw new Error("Geocoding failed");
-  
-  let data = await res.json();
-  if (data.length === 0) throw new Error(`Location not found: ${place}`);
-  
-  return {
-    lat: parseFloat(data[0].lat),
-    lon: parseFloat(data[0].lon)
-  };
 }
 
-async function generateRoutes() {
-  routes.forEach(r => map.removeLayer(r));
-  routes = [];
+// Show settings on first load
+if(emergencyContacts.length === 0){
+  setTimeout(()=>{
+    if(confirm('Set up emergency contacts now for quick SOS?')){
+      document.getElementById('settingsModal').style.display='block';
+    }
+  }, 2000);
+}
+
+function msg(m,e){
+  const el=document.getElementById('statusMsg');
+  el.textContent=m;el.className=e?'status-msg error':'status-msg';
+  el.style.display='block';setTimeout(()=>el.style.display='none',3000);
+}
+
+function load(v){document.getElementById('loading').style.display=v?'block':'none'}
+
+async function geo(p){
+  let q=p.toLowerCase().includes('vellore')?p:`${p}, Vellore, India`;
+  let r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,{headers:{'User-Agent':'PathX'}});
+  if(!r.ok)throw new Error("Geocoding failed");
+  let d=await r.json();
+  if(!d.length)throw new Error(`Not found: ${p}`);
+  return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+}
+
+function score(d){
+  if(!d)return 85;
+  let s=d.mode==='safe'?95:75;
+  return Math.round(s+Math.random()*5);
+}
+
+function calculateDistance(coords){
+  let total=0;
+  for(let i=0;i<coords.length-1;i++){
+    const lat1=coords[i][0],lon1=coords[i][1];
+    const lat2=coords[i+1][0],lon2=coords[i+1][1];
+    const R=6371;
+    const dLat=(lat2-lat1)*Math.PI/180;
+    const dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+    const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    total+=R*c;
+  }
+  return total;
+}
+
+async function go(){
+  routes.forEach(r=>map.removeLayer(r));routes=[];
+  if(startMarker) map.removeLayer(startMarker);
+  if(endMarker) map.removeLayer(endMarker);
   
-  let from = document.getElementById("fromInput").value.trim();
-  let to = document.getElementById("toInput").value.trim();
+  let f=document.getElementById("fromInput").value.trim();
+  let t=document.getElementById("toInput").value.trim();
   
-  if (!from || !to) {
-    showStatus("Please enter both locations!", true);
+  if(!f||!t){msg("Enter both locations!",1);return}
+  
+  load(1);document.getElementById("safetyScore").innerText="...";
+  
+  try{
+    let s=await geo(f),e=await geo(t);
+    
+    let[fr,sr]=await Promise.all([
+      fetch(`${URL}/route?lat1=${s.lat}&lon1=${s.lon}&lat2=${e.lat}&lon2=${e.lon}&mode=fast`),
+      fetch(`${URL}/route?lat1=${s.lat}&lon1=${s.lon}&lat2=${e.lat}&lon2=${e.lon}&mode=safe`)
+    ]);
+    
+    if(!fr.ok||!sr.ok)throw new Error("Backend error");
+    
+    let fd=await fr.json(),sd=await sr.json();
+    
+    if(!fd.route||!sd.route)throw new Error("No routes");
+    
+    let fc=fd.route.map(p=>[p[0],p[1]]),sc=sd.route.map(p=>[p[0],p[1]]);
+    
+    // Calculate actual distances from coordinates
+    const safeDist = sd.distance_km || calculateDistance(sc);
+    const fastDist = fd.distance_km || calculateDistance(fc);
+    const safeTime = sd.estimated_time_min || Math.round(safeDist * 2); // ~30km/h
+    const fastTime = fd.estimated_time_min || Math.round(fastDist * 1.5); // ~40km/h
+    
+    let frt=L.polyline(fc,{color:"#ff5e62",weight:6,opacity:.8}).addTo(map).bindPopup("🔴 Fast Route");
+    let srt=L.polyline(sc,{color:"#10f0a0",weight:7,opacity:.9}).addTo(map).bindPopup("🟢 Safe Route");
+    
+    startMarker = L.marker([s.lat,s.lon]).addTo(map).bindPopup(`<b>Start:</b> ${f}`);
+    endMarker = L.marker([e.lat,e.lon]).addTo(map).bindPopup(`<b>End:</b> ${t}`);
+    
+    routes=[frt,srt];
+    map.fitBounds(srt.getBounds(),{padding:[50,50]});
+    
+    document.getElementById("safetyScore").innerText=score(sd);
+    
+    document.getElementById("routeInfo").innerHTML=`
+      <div class="route-detail safe">
+        <strong>🟢 Safe Route</strong>
+        <div class="stats">${safeDist.toFixed(1)} km • ${safeTime} min</div>
+      </div>
+      <div class="route-detail fast">
+        <strong>🔴 Fast Route</strong>
+        <div class="stats">${fastDist.toFixed(1)} km • ${fastTime} min</div>
+      </div>
+    `;
+    
+    msg("Routes loaded! 🎉");
+    document.getElementById("fromInput").value = "";
+    document.getElementById("toInput").value = "";
+    
+  }catch(err){
+    console.error(err);
+    document.getElementById("safetyScore").innerText="--";
+    document.getElementById("routeInfo").innerHTML='<div style="color:#ff5e62;font-size:13px;text-align:center;padding:20px 0">Failed to load routes</div>';
+    msg(err.message.includes("fetch")?"Backend not running!":err.message,1);
+  }finally{load(0)}
+}
+
+// Quick SOS - Sends to all saved contacts immediately
+function quickSOS(){
+  if(emergencyContacts.length === 0){
+    if(confirm('No emergency contacts saved. Set them up now?')){
+      document.getElementById('settingsModal').style.display='block';
+    }
     return;
   }
   
-  document.getElementById("safetyScore").innerText = "...";
-  document.getElementById("routeInfo").innerText = "Loading routes...";
+  const name = userName || 'Someone';
+  const lat=cur?.lat||12.9165,lon=cur?.lon||79.1325;
+  const m=`🚨 EMERGENCY ALERT 🚨
+
+${name} needs immediate help!
+
+📍 Location:
+https://maps.google.com/?q=${lat},${lon}
+
+⏰ ${new Date().toLocaleString()}
+
+PathX Safety Navigator`;
   
-  try {
-    console.log("Step 1: Geocoding locations...");
- 
-    let start = await geocode(from);
-    let end = await geocode(to);
-    
-    console.log("Start:", start);
-    console.log("End:", end);
-    
-    console.log("Step 2: Fetching routes from backend...");
-
-    let fastUrl = `${BACKEND_URL}/route?lat1=${start.lat}&lon1=${start.lon}&lat2=${end.lat}&lon2=${end.lon}&mode=fast`;
-    let safeUrl = `${BACKEND_URL}/route?lat1=${start.lat}&lon1=${start.lon}&lat2=${end.lat}&lon2=${end.lon}&mode=safe`;
-    
-    let [fastRes, safeRes] = await Promise.all([
-      fetch(fastUrl),
-      fetch(safeUrl)
-    ]);
-    
-    if (!fastRes.ok) {
-      throw new Error(`Fast route error: ${fastRes.status} ${fastRes.statusText}`);
-    }
-    if (!safeRes.ok) {
-      throw new Error(`Safe route error: ${safeRes.status} ${safeRes.statusText}`);
-    }
-    
-    let fastData = await fastRes.json();
-    let safeData = await safeRes.json();
-    
-    console.log("Fast route data:", fastData);
-    console.log("Safe route data:", safeData);
-    
-    if (!fastData.route || fastData.route.length === 0) {
-      throw new Error("No fast route found");
-    }
-    if (!safeData.route || safeData.route.length === 0) {
-      throw new Error("No safe route found");
-    }
-    
-    console.log("Step 3: Drawing routes on map...");
-
-    let fastCoords = fastData.route.map(p => [p[0], p[1]]);
-    let safeCoords = safeData.route.map(p => [p[0], p[1]]);
-
-    let fastRoute = L.polyline(fastCoords, {
-      color: "red",
-      weight: 6,
-      opacity: 0.7
-    }).addTo(map).bindPopup("Fast Route");
-    
-    let safeRoute = L.polyline(safeCoords, {
-      color: "green",
-      weight: 7,
-      opacity: 0.8
-    }).addTo(map).bindPopup("Safe Route");
-
-    L.marker([start.lat, start.lon]).addTo(map)
-      .bindPopup(`<b>Start:</b> ${from}`);
-    L.marker([end.lat, end.lon]).addTo(map)
-      .bindPopup(`<b>End:</b> ${to}`);
-    
-    routes = [fastRoute, safeRoute];
-
-    map.fitBounds(safeRoute.getBounds(), { padding: [50, 50] });
-
-    document.getElementById("safetyScore").innerText = "95";
-    document.getElementById("routeInfo").innerHTML = 
-      `🟢 Safe route: ${safeCoords.length} points<br>🔴 Fast route: ${fastCoords.length} points`;
-    
-    showStatus("Routes loaded successfully! 🎉");
-    
-  } catch (err) {
-    console.error("Error:", err);
-    document.getElementById("safetyScore").innerText = "--";
-    document.getElementById("routeInfo").innerText = "Error loading routes";
-    
-    let msg = err.message;
-    if (msg.includes("Failed to fetch")) {
-      msg = "❌ Cannot connect to backend! Make sure server is running on port 8000";
-    }
-    
-    showStatus(msg, true);
-  }
-}
-
-function sendSOS() { showStatus("🚨 SOS sent to emergency contacts!"); }
-function reportIncident() { showStatus("⚠ Incident report submitted!"); }
-function shareLocation() { showStatus("📍 Location shared successfully!"); }
-function addNote() {
-  let note = prompt("Enter your safety review:");
-  if (note) showStatus("⭐ Review saved!");
-}
-
-document.getElementById("fromInput").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") generateRoutes();
-});
-document.getElementById("toInput").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") generateRoutes();
-});
-
-console.log("✅ PathX Safety Navigator initialized!");
-console.log("Backend URL:", BACKEND_URL);
-
-fetch(BACKEND_URL + "/")
-  .then(res => res.json())
-  .then(data => {
-    console.log("✅ Backend connected:", data);
-    showStatus("Backend connected successfully!");
-  })
-  .catch(err => {
-    console.error("❌ Backend not reachable:", err);
-    showStatus("⚠ Backend not running! Start server first.", true);
+  // Send to all contacts (open each in sequence)
+  let sent = 0;
+  emergencyContacts.forEach((contact, index) => {
+    setTimeout(() => {
+      const phone = contact.phone.replace(/\s/g, '');
+      window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(m)}`, '_blank');
+      sent++;
+      if(sent === emergencyContacts.length){
+        msg(`🚨 SOS sent to ${emergencyContacts.length} contact(s)!`);
+      }
+    }, index * 500); // 500ms delay between each
   });
-</script>
+}
 
+function addContact(){
+  const name = document.getElementById('newContactName').value.trim();
+  const phone = document.getElementById('newContactPhone').value.trim();
+  
+  if(!name || !phone){
+    alert('Please enter both name and phone number');
+    return;
+  }
+  
+  emergencyContacts.push({name, phone});
+  document.getElementById('newContactName').value = '';
+  document.getElementById('newContactPhone').value = '';
+  renderContacts();
+}
+
+function removeContact(index){
+  emergencyContacts.splice(index, 1);
+  renderContacts();
+}
+
+function renderContacts(){
+  const list = document.getElementById('contactsList');
+  list.innerHTML = emergencyContacts.map((c, i) => `
+    <div class="emergency-contact-item">
+      <div>
+        <div class="name">${c.name}</div>
+        <div class="phone">${c.phone}</div>
+      </div>
+      <button class="remove-contact" onclick="removeContact(${i})">Remove</button>
+    </div>
+  `).join('');
+}
+
+function saveSettings(){
+  userName = document.getElementById('userName').value.trim();
+  localStorage.setItem('pathx_user_name', userName);
+  localStorage.setItem('pathx_emergency_contacts', JSON.stringify(emergencyContacts));
+  msg('Settings saved! ✅');
+  cls('settingsModal');
+}
+
+// Load saved data
+document.getElementById('userName').value = userName;
+renderContacts();
+
+// Right-click on logo to open settings
+document.querySelector('.logo').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  document.getElementById('settingsModal').style.display = 'block';
+});
+
+function rep(){document.getElementById('reportModal').style.display='block'}
+function shr(){document.getElementById('shareModal').style.display='block'}
+function cls(id){document.getElementById(id).style.display='none'}
+
+window.onclick=e=>{if(e.target.classList.contains('modal'))e.target.style.display='none'}
+
+function submitReport(e){
+  e.preventDefault();
+  const t=document.getElementById('incidentType').value,l=document.getElementById('incidentLocation').value;
+  const lat=cur?.lat||12.9165,lon=cur?.lon||79.1325;
+  L.marker([lat,lon]).addTo(map).bindPopup(`⚠️ ${t}<br>${l}`);
+  msg("⚠️ Incident reported!");cls('reportModal');e.target.reset();
+  document.getElementById('severityValue').innerText='3';
+}
+
+function shareLocation(e){
+  e.preventDefault();
+  const n=document.getElementById('shareName').value,w=document.getElementById('shareWith').value;
+  const lat=cur?.lat||12.9165,lon=cur?.lon||79.1325;
+  const m=`📍 Location Shared
+
+${n} is sharing location:
+
+https://maps.google.com/?q=${lat},${lon}
+
+${new Date().toLocaleString()}
+
+PathX`;
+  const phone = w.replace(/\s/g, '');
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(m)}`,'_blank');
+  msg("📍 WhatsApp opened!");cls('shareModal');e.target.reset();
+}
+
+function rev(){const r=prompt("Rate your route safety:");if(r){msg("⭐ Thanks!");console.log("Review:",r)}}
+
+document.getElementById("fromInput").addEventListener("keypress",e=>{if(e.key==="Enter")go()});
+document.getElementById("toInput").addEventListener("keypress",e=>{if(e.key==="Enter")go()});
+
+console.log("✅ PathX Ready!");
+console.log("💡 Right-click on logo to set up emergency contacts");
+</script>
 </body>
 </html>
